@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+profiles/*/.generated/
+profiles/*/runs/
+!profiles/current_baseline/profile.json
