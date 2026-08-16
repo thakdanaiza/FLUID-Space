@@ -1,12 +1,13 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 cd /d "%~dp0"
-set "PYTHON_EXE=C:\ProgramData\anaconda3\python.exe"
-if not exist "%PYTHON_EXE%" (
-  echo Conda base Python was not found at %PYTHON_EXE%
-  echo Run setup_env.bat, then edit PYTHON_EXE here if Conda is installed elsewhere.
-  pause
-  exit /b 1
+
+if not exist ".venv\Scripts\pythonw.exe" (
+  echo FLUID-Space is not installed yet. Starting setup...
+  set "FLUID_SPACE_NO_PAUSE=1"
+  call setup_env.bat
+  if errorlevel 1 exit /b 1
 )
-"%PYTHON_EXE%" app.py --profile current_baseline
-if errorlevel 1 pause
+
+start "FLUID-Space" ".venv\Scripts\pythonw.exe" app.py --profile current_baseline
+exit /b 0

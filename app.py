@@ -8,20 +8,23 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any
 
+import cv2
 from PIL import Image, ImageTk
 
 from profile_store import (
     CHANNELS,
     ZONES,
+    copy_video_into_profile,
     duplicate_profile,
     list_profiles,
     load_profile,
     profile_completeness,
     profile_path,
     project_root,
+    resolve_profile_video,
     save_profile,
 )
 
@@ -66,6 +69,8 @@ class FluidSpaceApp:
         self.cad_paths: dict[str, list[list[list[float]]]] = vector_payload["groups"]
 
         self.profile_var = tk.StringVar()
+        self.video_var = tk.StringVar(value="Video: loading…")
+        self.frame_index_var = tk.StringVar(value="120")
         self.active_channel = tk.StringVar(value=CHANNELS[0])
         self.cad_visible = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value="Ready")
@@ -101,7 +106,18 @@ class FluidSpaceApp:
         body.add(sidebar, weight=0)
         body.add(work, weight=1)
 
-        ttk.Label(sidebar, text="1  Select channel", style="Step.TLabel").pack(anchor="w", pady=(2, 6))
+        ttk.Label(sidebar, text="1  Source video", style="Step.TLabel").pack(anchor="w", pady=(2, 4))
+        ttk.Label(sidebar, textvariable=self.video_var, justify="left", wraplength=250).pack(anchor="w", pady=(0, 5))
+        ttk.Button(sidebar, text="Select video…", command=self.select_video).pack(fill="x")
+        frame_row = ttk.Frame(sidebar)
+        frame_row.pack(fill="x", pady=(6, 0))
+        ttk.Label(frame_row, text="Frame").pack(side="left")
+        self.frame_spinbox = ttk.Spinbox(frame_row, from_=0, to=999999, textvariable=self.frame_index_var, width=8)
+        self.frame_spinbox.pack(side="left", padx=(6, 4))
+        ttk.Button(frame_row, text="Load", command=self.load_selected_frame).pack(side="left", expand=True, fill="x")
+
+        ttk.Separator(sidebar).pack(fill="x", pady=12)
+        ttk.Label(sidebar, text="2  Select channel", style="Step.TLabel").pack(anchor="w", pady=(2, 6))
         channel_frame = ttk.Frame(sidebar)
         channel_frame.pack(fill="x")
         for index, channel in enumerate(CHANNELS):
@@ -114,7 +130,7 @@ class FluidSpaceApp:
             ).grid(row=index // 2, column=index % 2, sticky="w", padx=(0, 18), pady=2)
 
         ttk.Separator(sidebar).pack(fill="x", pady=12)
-        ttk.Label(sidebar, text="2  Select drawing", style="Step.TLabel").pack(anchor="w", pady=(0, 6))
+        ttk.Label(sidebar, text="3  Select drawing", style="Step.TLabel").pack(anchor="w", pady=(0, 6))
         self.target_list = tk.Listbox(sidebar, height=len(ACTIONS), exportselection=False, activestyle="none", font=("Segoe UI", 10))
         for label, _ in ACTIONS:
             self.target_list.insert("end", label)
@@ -123,7 +139,7 @@ class FluidSpaceApp:
         self.target_list.pack(fill="x")
 
         ttk.Separator(sidebar).pack(fill="x", pady=12)
-        ttk.Label(sidebar, text="3  Draw on image", style="Step.TLabel").pack(anchor="w")
+        ttk.Label(sidebar, text="4  Draw on image", style="Step.TLabel").pack(anchor="w")
         instructions = (
             "Left click: add a point\n"
             "Right click / Enter: close polygon\n"
@@ -176,7 +192,7 @@ class FluidSpaceApp:
         self.profile_combo["values"] = names
         chosen = select if select in names else (names[0] if names else "")
         if not chosen:
-            raise RuntimeError("No profiles found. Run tools/import_legacy_profile.py first.")
+            raise RuntimeError("No profiles found. Add a profile under profiles/<name>/profile.json.")
         self.load(chosen)
 
     def load(self, name: str) -> None:
@@ -185,6 +201,7 @@ class FluidSpaceApp:
         self.profile_var.set(name)
         self.draft = []
         self.dirty = False
+        self._load_bound_video(show_error=True)
         self.status_var.set(f"Loaded profile: {name}")
         self.update_completeness()
         self.redraw()
@@ -223,6 +240,152 @@ class FluidSpaceApp:
         except Exception as exc:
             messagebox.showerror("Save failed", str(exc))
             return False
+
+    def _read_video_frame(
+        self,
+        path: Path,
+        frame_index: int,
+        clamp_index: bool = False,
+    ) -> tuple[Image.Image, dict[str, Any]]:
+        capture = cv2.VideoCapture(str(path), cv2.CAP_FFMPEG)
+        if not capture.isOpened():
+            capture.release()
+            capture = cv2.VideoCapture(str(path))
+        if not capture.isOpened():
+            raise RuntimeError(f"Cannot open video: {path}")
+        try:
+            frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+            fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0) or 30.0
+            if frame_index < 0:
+                raise ValueError("Frame index cannot be negative")
+            if frame_count and frame_index >= frame_count:
+                if clamp_index:
+                    frame_index = max(0, frame_count - 1)
+                else:
+                    raise ValueError(
+                        f"Frame {frame_index} is outside this video (last frame: {frame_count - 1})"
+                    )
+            capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            ok, frame = capture.read()
+        finally:
+            capture.release()
+        if not ok or frame is None:
+            raise RuntimeError(f"Cannot read frame {frame_index} from {path.name}")
+        height, width = frame.shape[:2]
+        expected = (int(self.profile["frame"]["width"]), int(self.profile["frame"]["height"]))
+        if (width, height) != expected:
+            raise ValueError(
+                f"Video resolution is {width}x{height}; this CAD profile requires "
+                f"{expected[0]}x{expected[1]}."
+            )
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        metadata = {
+            "frame_index": frame_index,
+            "frame_count": frame_count,
+            "fps": fps,
+            "width": width,
+            "height": height,
+        }
+        return Image.fromarray(rgb), metadata
+
+    def _load_bound_video(self, show_error: bool) -> bool:
+        try:
+            video_path = resolve_profile_video(self.profile_name, self.profile)
+            image, metadata = self._read_video_frame(
+                video_path,
+                int(self.profile["frame"]["index"]),
+            )
+        except Exception as exc:
+            self.video_var.set(f"Video unavailable: {exc}")
+            self.frame_image = Image.open(project_root() / "assets" / "frame_0120.png").convert("RGB")
+            if show_error:
+                messagebox.showerror("Profile video unavailable", str(exc))
+            return False
+        self.frame_image = image
+        self.frame_index_var.set(str(metadata["frame_index"]))
+        self.frame_spinbox.configure(to=max(0, metadata["frame_count"] - 1))
+        source = self.profile.setdefault("source_video", {})
+        display_name = str(source.get("name") or video_path.name)
+        source.update(
+            {
+                "fps": metadata["fps"],
+                "frame_count": metadata["frame_count"],
+            }
+        )
+        self.video_var.set(
+            f"{display_name}\n"
+            f"{metadata['width']}×{metadata['height']} · {metadata['frame_count']} frames · "
+            f"{metadata['fps']:.3g} fps"
+        )
+        return True
+
+    def select_video(self) -> None:
+        selected = filedialog.askopenfilename(
+            parent=self.root,
+            title=f"Select video for profile {self.profile_name}",
+            filetypes=(
+                ("Video files", "*.mp4 *.mov *.avi *.mkv *.m4v"),
+                ("All files", "*.*"),
+            ),
+        )
+        if not selected:
+            return
+        if self.draft:
+            if not messagebox.askyesno(
+                "Cancel current draft?",
+                "Selecting a video will cancel the unfinished polygon. Continue?",
+            ):
+                return
+            self.draft = []
+        source_path = Path(selected)
+        try:
+            image, metadata = self._read_video_frame(
+                source_path,
+                int(self.profile["frame"]["index"]),
+                clamp_index=True,
+            )
+            destination, relative = copy_video_into_profile(self.profile_name, source_path)
+            self.profile["source_video"] = {
+                "path": relative,
+                "name": source_path.name,
+                "stored_name": destination.name,
+                "fps": metadata["fps"],
+                "frame_count": metadata["frame_count"],
+            }
+            self.profile["frame"]["index"] = metadata["frame_index"]
+            self.frame_image = image
+            self.frame_index_var.set(str(metadata["frame_index"]))
+            self.frame_spinbox.configure(to=max(0, metadata["frame_count"] - 1))
+            self.video_var.set(
+                f"{source_path.name}\n"
+                f"{metadata['width']}×{metadata['height']} · {metadata['frame_count']} frames · "
+                f"{metadata['fps']:.3g} fps"
+            )
+            self.dirty = True
+            if not self.save():
+                return
+            self.fit_view()
+            self.status_var.set(f"Video bound to profile {self.profile_name}: {source_path.name}")
+        except Exception as exc:
+            messagebox.showerror("Cannot select video", str(exc))
+
+    def load_selected_frame(self) -> None:
+        try:
+            frame_index = int(self.frame_index_var.get().strip())
+            video_path = resolve_profile_video(self.profile_name, self.profile)
+            image, metadata = self._read_video_frame(video_path, frame_index)
+            self.profile["frame"]["index"] = metadata["frame_index"]
+            self.profile.setdefault("source_video", {}).update(
+                {"fps": metadata["fps"], "frame_count": metadata["frame_count"]}
+            )
+            self.frame_image = image
+            self.dirty = True
+            if not self.save():
+                return
+            self.fit_view()
+            self.status_var.set(f"Loaded frame {frame_index} from {video_path.name}")
+        except Exception as exc:
+            messagebox.showerror("Cannot load frame", str(exc))
 
     def current_target(self) -> tuple[str, str]:
         selection = self.target_list.curselection()
@@ -572,9 +735,14 @@ def main() -> None:
     if args.check:
         complete, missing = profile_completeness(profile)
         bubble_count = sum(len(profile["bubbles"][channel]) for channel in CHANNELS)
+        video_path = resolve_profile_video(args.profile, profile)
+        if not video_path.is_file():
+            raise FileNotFoundError(f"Profile video not found: {video_path}")
         print(f"Profile: {profile['name']}")
         print(f"Complete: {complete}; missing={missing}")
         print(f"Bubbles: {bubble_count}")
+        print(f"Video: {video_path}")
+        print(f"Frame: {profile['frame']['index']}")
         return
     root = tk.Tk()
     FluidSpaceApp(root, args.profile)

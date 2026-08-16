@@ -10,7 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from cad_mask import build_cad_masks
-from profile_store import CHANNELS, load_profile, profile_path, project_root
+from profile_store import (
+    CHANNELS,
+    load_profile,
+    profile_path,
+    project_root,
+    resolve_profile_video,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,10 +42,14 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
 def generate_compatibility_files(profile_name: str) -> tuple[dict[str, Any], Path, Path, Path]:
     root = project_root()
     profile = load_profile(profile_name, require_complete=True)
+    video_path = resolve_profile_video(profile_name, profile)
+    if not video_path.is_file():
+        raise FileNotFoundError(f"Profile video not found: {video_path}")
     profile_dir = profile_path(profile_name).parent
     generated = profile_dir / ".generated"
     generated.mkdir(parents=True, exist_ok=True)
     frame_index = int(profile["frame"]["index"])
+    fps = float(profile.get("source_video", {}).get("fps", 30.0) or 30.0)
     roi_path = generated / "roi.json"
     analysis_path = generated / "analysis.json"
     cad_masks_path = generated / "cad_masks.npz"
@@ -47,13 +57,13 @@ def generate_compatibility_files(profile_name: str) -> tuple[dict[str, Any], Pat
         "schema_version": 3,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "source": {
-            "video_path": str((root / "assets" / "reference.mp4").resolve()),
-            "video_name": "reference.mp4",
+            "video_path": str(video_path),
+            "video_name": video_path.name,
             "frame_index": frame_index,
-            "frame_time_sec": frame_index / 30.0,
+            "frame_time_sec": frame_index / fps,
             "frame_width": int(profile["frame"]["width"]),
             "frame_height": int(profile["frame"]["height"]),
-            "fps": 30.0,
+            "fps": fps,
         },
         "channels": list(CHANNELS),
         "rois": profile["rois"],
@@ -70,13 +80,13 @@ def generate_compatibility_files(profile_name: str) -> tuple[dict[str, Any], Pat
         "schema_version": 1,
         "updated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": {
-            "video_path": str((root / "assets" / "reference.mp4").resolve()),
-            "video_name": "reference.mp4",
+            "video_path": str(video_path),
+            "video_name": video_path.name,
             "reference_frame": frame_index,
-            "frame_time_sec": frame_index / 30.0,
+            "frame_time_sec": frame_index / fps,
             "frame_width": int(profile["frame"]["width"]),
             "frame_height": int(profile["frame"]["height"]),
-            "fps": 30.0,
+            "fps": fps,
         },
         "roi_project": {"path": str(roi_path.resolve()), "sha256": sha256(roi_path)},
         "wet_area_polygons": {channel: [] for channel in CHANNELS},
@@ -99,10 +109,11 @@ def generate_compatibility_files(profile_name: str) -> tuple[dict[str, Any], Pat
 def command_for_profile(profile_name: str, check: bool = False) -> list[str]:
     root = project_root()
     profile, roi_path, analysis_path, cad_masks_path = generate_compatibility_files(profile_name)
+    video_path = resolve_profile_video(profile_name, profile)
     command = [
         sys.executable,
         str(root / "fluid_phase_pipeline_v2.py"),
-        "--video", str(root / "assets" / "reference.mp4"),
+        "--video", str(video_path),
         "--project", str(roi_path),
         "--analysis-project", str(analysis_path),
         "--frame", str(profile["frame"]["index"]),
