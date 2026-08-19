@@ -4,6 +4,33 @@ FLUID-Space creates phase maps from experiment videos using a fixed CAD layout. 
 
 The application supports Windows 10/11 and current Intel or Apple Silicon Macs. Conda is not required.
 
+## Documentation
+
+- Open `docs/FLUID-Space_User_Guide_and_Methods.docx` for the complete illustrated-style user guide, quality-control checklist, analysis explanation, and manuscript-ready Methods template.
+- Open `METHODS.md` for a plain-text research methods reference that can be copied and adapted for individual studies.
+
+The Methods template contains placeholders in square brackets. Replace them with the actual video, frame, software, acquisition, and study details before using the text in a manuscript.
+
+## Citing FLUID-Space
+
+Cite the exact FLUID-Space release used for the analysis. Do not cite only this README or an unversioned working branch.
+
+Example Methods sentence:
+
+> Image analysis was performed using FLUID-Space v0.2.0 (Author et al., 2026), a CAD-authoritative image-analysis workflow. The registered CAD geometry was intersected with channel-specific regions of interest and Interest Zones before calibration regions and manually annotated gas bubbles were excluded.
+
+Example software reference before a DOI is available:
+
+> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 0.2.0) [Computer software]. Laboratory or institution. Repository URL
+
+Preferred reference after archiving the release on Zenodo or another DOI-issuing repository:
+
+> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 0.2.0) [Computer software]. Zenodo. https://doi.org/10.xxxx/zenodo.xxxxxxx
+
+Replace the author names, year, version, institution, repository URL, and DOI with the real release metadata. The citation format may be adjusted to the target journal's reference style, but the software version and persistent release identifier should remain included.
+
+For the first paper that introduces or validates this workflow, describe the algorithm in sufficient detail and cite both the archived software release and relevant underlying methods such as GrabCut/OpenCV. Later papers should cite the validation paper together with the exact FLUID-Space software release used for analysis.
+
 ## Before you begin
 
 You need:
