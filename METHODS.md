@@ -1,6 +1,6 @@
 # FLUID-Space Research Methods Reference
 
-This file describes the analysis implemented in FLUID-Space v0.2.0 and provides manuscript-ready language for laboratory studies. Confirm the software version, selected frame, profile, and study-specific acquisition details before reusing the text.
+This file describes the analysis implemented in FLUID-Space v1.0.0 and provides manuscript-ready language for laboratory studies. Confirm the software version, selected frame, profile, and study-specific acquisition details before reusing the text.
 
 ## Method summary
 
@@ -105,4 +105,4 @@ Replace every item in square brackets before use:
 
 The phase index is a calibrated hue-distance index, not automatically a volumetric phase fraction. A study should not describe it as oil fraction, water saturation, concentration, or holdup unless that relationship has been independently validated for the optical setup, dyes, illumination, camera, channel material, and fluid system used in that study.
 
-FLUID-Space v0.2.0 analyzes a selected frame per run. A time-series study must define its frame-sampling strategy and repeat the analysis consistently; the current UI does not automatically aggregate an entire video into a temporal endpoint.
+FLUID-Space v1.0.0 analyzes a selected frame per run. A time-series study must define its frame-sampling strategy and repeat the analysis consistently; the current UI does not automatically aggregate an entire video into a temporal endpoint.

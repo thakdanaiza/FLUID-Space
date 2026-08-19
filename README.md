@@ -17,15 +17,15 @@ Cite the exact FLUID-Space release used for the analysis. Do not cite only this 
 
 Example Methods sentence:
 
-> Image analysis was performed using FLUID-Space v0.2.0 (Author et al., 2026), a CAD-authoritative image-analysis workflow. The registered CAD geometry was intersected with channel-specific regions of interest and Interest Zones before calibration regions and manually annotated gas bubbles were excluded.
+> Image analysis was performed using FLUID-Space v1.0.0 (Author et al., 2026), a CAD-authoritative image-analysis workflow. The registered CAD geometry was intersected with channel-specific regions of interest and Interest Zones before calibration regions and manually annotated gas bubbles were excluded.
 
 Example software reference before a DOI is available:
 
-> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 0.2.0) [Computer software]. Laboratory or institution. Repository URL
+> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 1.0.0) [Computer software]. Laboratory or institution. Repository URL
 
 Preferred reference after archiving the release on Zenodo or another DOI-issuing repository:
 
-> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 0.2.0) [Computer software]. Zenodo. https://doi.org/10.xxxx/zenodo.xxxxxxx
+> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.xxxx/zenodo.xxxxxxx
 
 Replace the author names, year, version, institution, repository URL, and DOI with the real release metadata. The citation format may be adjusted to the target journal's reference style, but the software version and persistent release identifier should remain included.
 
