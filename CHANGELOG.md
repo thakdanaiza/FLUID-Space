@@ -2,6 +2,23 @@
 
 All notable changes to FLUID-Space are documented in this file.
 
+## 2.0.1 - 2026-09-22
+
+Research-ready documentation and citation release.
+
+### Added
+
+- Citation metadata for Thakdanai Sirisombat and Saran Seehanam.
+- MIT License with joint copyright attribution to the authors and ISHA.
+- Implementation-aligned calibration, mask, phase-index, output, and reproducibility documentation.
+- Tested software versions, release checksums, and a Conda environment specification.
+- Separate Windows and macOS application ZIPs with platform-specific launchers and quick-start instructions.
+
+### Fixed
+
+- User-created profile JSON and copied source videos are now excluded from Git and source-release archives.
+- v2 documentation no longer describes unused v1 four-channel/refinement behavior as part of the active pipeline.
+
 ## 2.0.0 - 2026-09-22
 
 Profile-first release for legacy channel experiments and generic videos.

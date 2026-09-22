@@ -1,0 +1,12 @@
+name: fluid-space
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - tk
+  - pip:
+      - numpy==1.26.4
+      - opencv-python-headless==4.14.0.94
+      - matplotlib==3.9.2
+      - Pillow==10.4.0
