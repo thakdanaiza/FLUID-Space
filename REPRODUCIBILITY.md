@@ -4,6 +4,7 @@
 
 - Release: `v2.0.1`
 - Repository: <https://github.com/thakdanaiza/FLUID-Space>
+- DOI: <https://doi.org/10.5281/zenodo.22888466>
 - Release date: 2026-09-22
 - Operating system tested: Windows 11 (`10.0.26200`)
 - Python: 3.12.7

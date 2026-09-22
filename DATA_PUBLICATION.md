@@ -43,7 +43,7 @@ The command validates each profile and video, creates a portable profile/video l
 
 ## Upload to Zenodo
 
-Create a new upload manually and select resource type **Dataset**. Upload the generated dataset ZIP and its checksum file. Use the study's actual creators, title, description, keywords, access conditions, and data license. Add the FLUID-Space software DOI as a related identifier after Zenodo archives the software release. Then add the dataset DOI back to the paper and, if desired, to the repository documentation.
+Create a new upload manually and select resource type **Dataset**. Upload the generated dataset ZIP and its checksum file. Use the study's actual creators, title, description, keywords, access conditions, and data license. Add the FLUID-Space software DOI, `10.5281/zenodo.22888466`, as a related identifier. Then add the dataset DOI back to the paper and, if desired, to the repository documentation.
 
 Before publishing, verify:
 

@@ -1,5 +1,7 @@
 # FLUID-Space v2.0.1
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22888466.svg)](https://doi.org/10.5281/zenodo.22888466)
+
 FLUID-Space is a profile-based application for generating calibrated phase-index maps from experiment videos. One profile contains one complete analysis setup; the UI has no separate channel selector. Profiles may use the supplied legacy CAD boundary or an ROI-only workflow for videos outside the original CH1/CH2 layout.
 
 ## Authors and citation
@@ -7,11 +9,11 @@ FLUID-Space is a profile-based application for generating calibrated phase-index
 - Thakdanai Sirisombat — Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy; [ORCID 0000-0003-4360-3525](https://orcid.org/0000-0003-4360-3525); contact: <fifatein@gmail.com>
 - Saran Seehanam — Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy
 
-Use GitHub's **Cite this repository** function, which reads [`CITATION.cff`](CITATION.cff), or cite the DOI shown on the latest archived release.
+Use GitHub's **Cite this repository** function, which reads [`CITATION.cff`](CITATION.cff), or cite the archived release DOI: [10.5281/zenodo.22888466](https://doi.org/10.5281/zenodo.22888466).
 
 Suggested citation before a DOI is assigned:
 
-> Sirisombat, T., & Seehanam, S. (2026). *FLUID-Space* (Version 2.0.1) [Computer software]. Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy. https://github.com/thakdanaiza/FLUID-Space/releases/tag/v2.0.1
+> Sirisombat, T., & Seehanam, S. (2026). *FLUID-Space* (Version 2.0.1) [Computer software]. Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy. https://doi.org/10.5281/zenodo.22888466
 
 ## License
 

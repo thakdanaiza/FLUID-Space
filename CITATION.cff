@@ -5,6 +5,7 @@ abstract: "A profile-based image-analysis application for calibrated phase-index
 type: software
 version: 2.0.1
 date-released: 2026-09-22
+doi: "10.5281/zenodo.22888466"
 authors:
   - family-names: Sirisombat
     given-names: Thakdanai
@@ -15,7 +16,7 @@ authors:
     given-names: Saran
     affiliation: "Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy"
 repository-code: "https://github.com/thakdanaiza/FLUID-Space"
-url: "https://github.com/thakdanaiza/FLUID-Space"
+url: "https://doi.org/10.5281/zenodo.22888466"
 license: MIT
 keywords:
   - image analysis

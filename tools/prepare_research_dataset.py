@@ -67,9 +67,7 @@ Each `profiles/<name>/profile.json` is paired with its video under the same prof
 
 ## Software
 
-FLUID-Space v2.0.1: https://github.com/thakdanaiza/FLUID-Space/releases/tag/v2.0.1
-
-Replace this URL with or supplement it by the software DOI after Zenodo archives the release.
+FLUID-Space v2.0.1: https://doi.org/10.5281/zenodo.22888466
 
 ## License
 
@@ -100,6 +98,7 @@ def build_dataset(title: str, data_license: str, profile_names: list[str], outpu
             "version": "2.0.1",
             "repository": "https://github.com/thakdanaiza/FLUID-Space",
             "release": "https://github.com/thakdanaiza/FLUID-Space/releases/tag/v2.0.1",
+            "doi": "10.5281/zenodo.22888466",
         },
         "profiles": [],
     }
