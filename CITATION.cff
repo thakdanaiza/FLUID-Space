@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use FLUID-Space in research, please cite this software release."
-title: "FLUID-Space"
+title: "FLUID-Space: A Profile-Based Tool for Calibrated Phase-Index Mapping from Experimental Videos"
 abstract: "A profile-based image-analysis application for calibrated phase-index mapping from experiment videos, supporting both legacy CAD geometry and generic ROI-only workflows."
 type: software
 version: 2.0.1

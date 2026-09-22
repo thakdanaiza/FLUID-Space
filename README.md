@@ -1,4 +1,6 @@
-# FLUID-Space v2.0.1
+# FLUID-Space
+
+## A Profile-Based Tool for Calibrated Phase-Index Mapping from Experimental Videos
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22888466.svg)](https://doi.org/10.5281/zenodo.22888466)
 
@@ -11,9 +13,9 @@ FLUID-Space is a profile-based application for generating calibrated phase-index
 
 Use GitHub's **Cite this repository** function, which reads [`CITATION.cff`](CITATION.cff), or cite the archived release DOI: [10.5281/zenodo.22888466](https://doi.org/10.5281/zenodo.22888466).
 
-Suggested citation before a DOI is assigned:
+Suggested citation:
 
-> Sirisombat, T., & Seehanam, S. (2026). *FLUID-Space* (Version 2.0.1) [Computer software]. Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy. https://doi.org/10.5281/zenodo.22888466
+> Sirisombat, T., & Seehanam, S. (2026). *FLUID-Space: A Profile-Based Tool for Calibrated Phase-Index Mapping from Experimental Videos* (Version 2.0.1) [Computer software]. Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy. https://doi.org/10.5281/zenodo.22888466
 
 ## License
 
