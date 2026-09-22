@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import copy
+import json
 import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 import profile_store
 from phase_analysis_core import refine_bubble_boundaries
 from run_profile import command_for_profile
+from tools.prepare_research_dataset import build_dataset
 
 
 class ProfileSystemTests(unittest.TestCase):
@@ -47,6 +51,22 @@ class ProfileSystemTests(unittest.TestCase):
         self.assertTrue(command[1].endswith("single_profile_pipeline.py"))
         self.assertEqual(command[command.index("--profile") + 1], "current_baseline_CH1-1")
         self.assertIn("--check", command)
+
+    def test_research_dataset_bundle_is_portable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            archive, checksum = build_dataset(
+                "FLUID-Space test dataset",
+                "CC-BY-4.0",
+                ["current_baseline_CH1-1"],
+                Path(temporary),
+            )
+            self.assertTrue(checksum.is_file())
+            with zipfile.ZipFile(archive) as bundle:
+                names = bundle.namelist()
+                profile_name = next(name for name in names if name.endswith("/profile.json"))
+                payload = json.loads(bundle.read(profile_name))
+                self.assertTrue(payload["source_video"]["path"].startswith("source/"))
+                self.assertTrue(any("/source/" in name for name in names))
 
     def test_profile_slug_rejects_empty_names(self) -> None:
         with self.assertRaises(ValueError):

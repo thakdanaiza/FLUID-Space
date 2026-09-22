@@ -13,6 +13,7 @@ Research-ready documentation and citation release.
 - Implementation-aligned calibration, mask, phase-index, output, and reproducibility documentation.
 - Tested software versions, release checksums, and a Conda environment specification.
 - Separate Windows and macOS application ZIPs with platform-specific launchers and quick-start instructions.
+- A research-dataset packaging tool that bundles selected profiles and videos with portable paths, metadata, and SHA-256 hashes for a separate Zenodo dataset record.
 
 ### Fixed
 

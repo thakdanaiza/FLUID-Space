@@ -26,6 +26,8 @@ COMMON_FILES = {
     "requirements.txt",
     "run_profile.py",
     "single_profile_pipeline.py",
+    "DATA_PUBLICATION.md",
+    "tools/prepare_research_dataset.py",
 }
 
 PLATFORMS = {

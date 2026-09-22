@@ -148,3 +148,5 @@ python run_profile.py --profile current_baseline_CH1-1
 ```
 
 See [METHODS.md](METHODS.md) for manuscript-ready method text and [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the tested environment and provenance checklist.
+
+Study profiles and videos should be archived as a separate Zenodo dataset rather than committed to the software repository. See [DATA_PUBLICATION.md](DATA_PUBLICATION.md) and use `tools/prepare_research_dataset.py` to create a validated portable bundle with hashes.
