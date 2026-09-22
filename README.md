@@ -1,140 +1,53 @@
-# FLUID-Space
+# FLUID-Space v2
 
-FLUID-Space creates phase maps from experiment videos using a fixed CAD layout. You select a video and frame, review the setup for each channel, mark bubbles, and run the analysis.
+FLUID-Space creates calibrated phase maps from experiment videos. In v2, one profile is one complete analysis setup. There is no channel selector: choose a profile, choose its video and frame, edit its geometry, then run it.
 
-The application supports Windows 10/11 and current Intel or Apple Silicon Macs. Conda is not required.
+Profiles can use the supplied legacy CAD boundary or work in ROI-only mode for videos that do not use the CH1/CH2 layout. ROI-only profiles may use any positive video resolution.
 
-## Documentation
+## Install
 
-- Open `docs/FLUID-Space_User_Guide_and_Methods.docx` for the complete illustrated-style user guide, quality-control checklist, analysis explanation, and manuscript-ready Methods template.
-- Open `METHODS.md` for a plain-text research methods reference that can be copied and adapted for individual studies.
+FLUID-Space supports Windows 10/11 and current Intel or Apple Silicon Macs with Python 3.12. Conda is optional.
 
-The Methods template contains placeholders in square brackets. Replace them with the actual video, frame, software, acquisition, and study details before using the text in a manuscript.
+On Windows, extract the release and run `setup_env.bat`, then open `start_ui.bat`.
 
-## Citing FLUID-Space
-
-Cite the exact FLUID-Space release used for the analysis. Do not cite only this README or an unversioned working branch.
-
-Example Methods sentence:
-
-> Image analysis was performed using FLUID-Space v1.0.0 (Author et al., 2026), a CAD-authoritative image-analysis workflow. The registered CAD geometry was intersected with channel-specific regions of interest and Interest Zones before calibration regions and manually annotated gas bubbles were excluded.
-
-Example software reference before a DOI is available:
-
-> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 1.0.0) [Computer software]. Laboratory or institution. Repository URL
-
-Preferred reference after archiving the release on Zenodo or another DOI-issuing repository:
-
-> Author Surname, Initials., Author Surname, Initials., & Author Surname, Initials. (2026). *FLUID-Space* (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.xxxx/zenodo.xxxxxxx
-
-Replace the author names, year, version, institution, repository URL, and DOI with the real release metadata. The citation format may be adjusted to the target journal's reference style, but the software version and persistent release identifier should remain included.
-
-For the first paper that introduces or validates this workflow, describe the algorithm in sufficient detail and cite both the archived software release and relevant underlying methods such as GrabCut/OpenCV. Later papers should cite the validation paper together with the exact FLUID-Space software release used for analysis.
-
-## Before you begin
-
-You need:
-
-- Python 3.12 (64-bit recommended)
-- Internet access during the first installation
-- Approximately 1 GB of free disk space
-- A source video with a resolution of **1090 × 340 pixels**
-
-Download Python from the official website:
-
-- Windows: <https://www.python.org/downloads/windows/>
-- macOS: <https://www.python.org/downloads/macos/>
-
-## Install on Windows
-
-1. Install Python 3.12. If the installer offers an option to add Python to `PATH`, enable it.
-2. Extract the FLUID-Space ZIP to a normal writable folder, such as Documents.
-3. Open the extracted folder.
-4. Double-click `setup_env.bat`.
-5. Wait until `Environment check passed` is displayed.
-
-Installation is required only once. To open FLUID-Space later, double-click `start_ui.bat`.
-
-## Install on macOS
-
-1. Install Python 3.12 using the official Python.org macOS installer.
-2. Extract the FLUID-Space ZIP.
-3. Open Terminal.
-4. Type `cd `, drag the extracted FLUID-Space folder into Terminal, and press Return.
-5. Run:
+On macOS, run:
 
 ```bash
 bash setup_env.sh
 bash start_ui.sh
 ```
 
-Installation is required only once. To open FLUID-Space later, enter the project folder in Terminal and run:
+## Profile model
 
-```bash
-bash start_ui.sh
-```
+Each v2 profile stores one:
 
-You can also enable the Finder launcher once:
+- Source video and analysis frame
+- Interest Zone
+- Analysis ROI
+- Calibration ROI
+- Set of bubble exclusions
+- Flow direction
+- Optional legacy CAD binding
+- Independent result history
 
-```bash
-chmod +x start_ui_mac.command
-```
+The v1 `current_baseline` is exposed automatically as four profiles:
 
-After that, open `start_ui_mac.command` from Finder. If macOS shows a security prompt because the file was downloaded, right-click the file, select **Open**, and confirm.
+- `current_baseline_CH1-1`
+- `current_baseline_CH1-2`
+- `current_baseline_CH2-1`
+- `current_baseline_CH2-2`
+
+This migration is non-destructive. The v1 source profile remains unchanged; saving one of the derived profiles creates its own schema-v2 profile.
 
 ## Use FLUID-Space
 
-### 1. Select a profile
-
-Choose a profile from the **Profile** list at the top of the window.
-
-To create a separate setup without changing the approved baseline, click **Duplicate as…**, enter a new profile name, and use the new profile.
-
-Each profile stores its own:
-
-- Source video
-- Selected frame
-- Interest Zones
-- Channel ROIs
-- Bubble exclusions
-- Analysis results
-
-### 2. Select a source video
-
-1. Click **Select video…**.
-2. Choose the experiment video.
-3. Wait for the video information to appear in the left panel.
-
-FLUID-Space copies the selected video into the active profile. The video remains connected to that profile when the application is reopened.
-
-The video must be **1090 × 340 pixels** because the CAD layout is calibrated to this exact image size.
-
-### 3. Select the analysis frame
-
-1. Enter a frame number in the **Frame** box.
-2. Click **Load**.
-3. Confirm that the displayed image is the frame you want to analyze.
-
-The selected frame number is saved with the profile.
-
-### 4. Review each channel
-
-Select one channel at a time:
-
-- CH1-1
-- CH1-2
-- CH2-1
-- CH2-2
-
-Only the selected channel's setup is displayed. Use the **CAD overlay** checkbox to show or hide the CAD outline.
-
-### 5. Edit the analysis setup
-
-Select the item you want to edit:
-
-- **Interest Zone** — limits the useful length of the CH1 or CH2 assembly
-- **Channel ROI** — limits the area used for the selected channel
-- **Bubble** — excludes a bubble or unwanted area from the result
+1. Select a profile at the top of the window. To make an independent setup, click **Duplicate as…**.
+2. Click **Select video…** and choose the source clip.
+3. Enter the analysis frame and click **Load**.
+4. For a non-channel clip, turn off **Use legacy CAD boundary**. If the new video has a different resolution, confirm that the old geometry should be cleared.
+5. Draw the **Interest Zone**, **Analysis ROI**, and **Calibration ROI**. Add any number of **Bubble** exclusions.
+6. Enable **Reverse result direction** when flow should be reported from right to left.
+7. Click **Save**, then **Run result**.
 
 Drawing controls:
 
@@ -142,80 +55,54 @@ Drawing controls:
 - Right click or Enter: close the polygon
 - Mouse wheel: zoom
 - Middle-button drag: pan
-- Esc: cancel the current unfinished polygon
+- Esc: cancel the current polygon
 - Ctrl+Z: remove the latest unfinished point
-- Ctrl+S: save the profile
+- Ctrl+S: save
 
-Use **Clear current** carefully. For Interest Zone or Channel ROI, it clears the selected polygon. For Bubble, it removes the latest bubble in the selected channel.
-
-The final analysis area is calculated as:
+The ROI-only analysis area is:
 
 ```text
-CAD interior ∩ Channel ROI ∩ Interest Zone − Bubble exclusions
+Analysis ROI ∩ Interest Zone − Calibration ROI − Bubble exclusions
 ```
 
-CAD boundaries and internal CAD islands are fixed. Areas outside the CAD interior are never included in the result.
+When legacy CAD is enabled, the CAD interior is also intersected with that area.
 
-### 6. Save and run
+## Results
 
-Click **Save** after editing the profile.
-
-Click **Run result** to process the selected frame. Keep FLUID-Space open until the completion message appears.
-
-## Find the results
-
-Results are saved inside the active profile:
+Each run is saved under:
 
 ```text
 profiles/<profile-name>/runs/run_xxx/
 ```
 
-The main result image is:
+The main result is `graphs/phase_result.png`. The run also contains the phase profile graph, NumPy arrays, masks, QC images, `summary.json`, and `summary.csv`.
 
-```text
-graphs/phase_publication_aligned_left.png
-```
+## Command line and checks
 
-The run folder also contains the PDF, masks, arrays, quality-control images, and summary files.
-
-## Troubleshooting
-
-### Python was not found
-
-Install Python 3.12 from Python.org, close all Command Prompt or Terminal windows, reopen them, and run the setup again.
-
-### The environment is missing or damaged
-
-Windows: run:
-
-```text
-setup_env.bat --recreate
-```
-
-macOS: run:
+Run a profile:
 
 ```bash
-bash setup_env.sh --recreate
+python run_profile.py --profile current_baseline_CH1-1
 ```
 
-This recreates only the application's Python environment. It does not remove profiles or results.
-
-### A package installation fails
-
-Check the internet connection and run the setup script again. It is safe to rerun.
-
-### Tkinter is missing on macOS
-
-Install Python using the official Python.org macOS installer, then recreate the environment:
+Validate it without creating a run folder:
 
 ```bash
-bash setup_env.sh --recreate
+python run_profile.py --profile current_baseline_CH1-1 --check
 ```
 
-### The video cannot be selected
+## Notes for existing v1 users
 
-Confirm that the file is a supported video and its resolution is exactly **1090 × 340 pixels**. Common formats such as MP4, MOV, AVI, MKV, and M4V are available in the file selector.
+- Channel selection has been removed from the UI and runtime.
+- A profile can no longer contain four setups; duplicate or select one profile per setup.
+- Legacy CAD metadata is retained only for migrated CAD profiles.
+- Selecting a different-resolution video clears incompatible geometry after confirmation and switches the profile to ROI-only mode.
+- The original four-channel pipeline remains in the source tree for reproducibility of v1 analyses, but v2 profiles run through `single_profile_pipeline.py`.
 
-### The selected frame cannot be loaded
+## Citing FLUID-Space
 
-Enter a frame number between `0` and the final frame shown for the selected video.
+Cite the exact release used. Example:
+
+> Image analysis was performed using FLUID-Space v2.0.0 (Author et al., 2026), using one independently stored analysis setup per profile.
+
+Replace author, institution, repository, and DOI placeholders with the release's archived metadata.

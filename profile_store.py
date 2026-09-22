@@ -12,9 +12,8 @@ from pathlib import Path
 from typing import Any
 
 
-CHANNELS = ("CH1-1", "CH1-2", "CH2-1", "CH2-2")
-ZONES = ("ZONE-CH1", "ZONE-CH2")
-PROFILE_SCHEMA = 1
+LEGACY_CHANNELS = ("CH1-1", "CH1-2", "CH2-1", "CH2-2")
+PROFILE_SCHEMA = 2
 DEFAULT_VIDEO = "../../assets/reference.mp4"
 
 
@@ -35,6 +34,134 @@ def slugify(name: str) -> str:
 
 def profile_path(name: str) -> Path:
     return profiles_root() / slugify(name) / "profile.json"
+
+
+def _raw_profile(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _legacy_virtual_name(base: str, channel: str) -> str:
+    return f"{base}_{channel}"
+
+
+def _find_legacy_virtual(name: str) -> tuple[Path, str] | None:
+    for path in profiles_root().glob("*/profile.json"):
+        payload = _raw_profile(path)
+        if int(payload.get("schema_version", -1)) != 1:
+            continue
+        base = str(payload.get("name") or path.parent.name)
+        for channel in LEGACY_CHANNELS:
+            if name == _legacy_virtual_name(base, channel):
+                return path, channel
+    return None
+
+
+def _migrate_legacy(payload: dict[str, Any], channel: str) -> dict[str, Any]:
+    group = channel.split("-", 1)[0]
+    migrated = {
+        "schema_version": PROFILE_SCHEMA,
+        "name": _legacy_virtual_name(str(payload.get("name", "profile")), channel),
+        "description": f"Migrated v1 setup for {channel}",
+        "frame": copy.deepcopy(payload.get("frame", {})),
+        "source_video": copy.deepcopy(payload.get("source_video", {})),
+        "geometry": {
+            "interest_zone": copy.deepcopy(payload.get("interest_zones", {}).get(f"ZONE-{group}", [])),
+            "analysis_roi": copy.deepcopy(payload.get("rois", {}).get(channel, [])),
+            "calibration_roi": copy.deepcopy(payload.get("calibration_rois", {}).get(f"CAL-{group}", [])),
+            "bubbles": copy.deepcopy(payload.get("bubbles", {}).get(channel, [])),
+        },
+        "cad": {"enabled": True, "legacy_channel": channel},
+        "settings": copy.deepcopy(payload.get("settings", {})),
+    }
+    migrated["settings"]["flip_horizontal"] = channel.startswith("CH2")
+    return migrated
+
+
+def list_profiles() -> list[str]:
+    if not profiles_root().exists():
+        return []
+    names: list[str] = []
+    for path in profiles_root().glob("*/profile.json"):
+        payload = _raw_profile(path)
+        if int(payload.get("schema_version", -1)) == 1:
+            base = str(payload.get("name") or path.parent.name)
+            names.extend(_legacy_virtual_name(base, channel) for channel in LEGACY_CHANNELS)
+        else:
+            names.append(path.parent.name)
+    return sorted(set(names), key=str.casefold)
+
+
+def _point(value: Any, label: str, width: int, height: int) -> list[float]:
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        raise ValueError(f"Invalid point in {label}")
+    x, y = float(value[0]), float(value[1])
+    if not (0 <= x < width and 0 <= y < height):
+        raise ValueError(f"Point outside the {width}x{height} frame in {label}: ({x}, {y})")
+    return [round(x, 6), round(y, 6)]
+
+
+def _polygon(value: Any, label: str, width: int, height: int, required: bool = True) -> list[list[float]]:
+    points = [_point(point, label, width, height) for point in (value or [])]
+    if required and len(points) < 3:
+        raise ValueError(f"{label} needs at least 3 points")
+    if points and len(points) < 3:
+        raise ValueError(f"{label} has fewer than 3 points")
+    return points
+
+
+def validate_profile(payload: dict[str, Any], require_complete: bool = True) -> dict[str, Any]:
+    if int(payload.get("schema_version", -1)) != PROFILE_SCHEMA:
+        raise ValueError(f"Unsupported profile schema: {payload.get('schema_version')}")
+    result = copy.deepcopy(payload)
+    result["name"] = slugify(str(result.get("name", "")))
+    frame = result.setdefault("frame", {"index": 0, "width": 0, "height": 0})
+    width, height = int(frame.get("width", 0)), int(frame.get("height", 0))
+    if width < 1 or height < 1:
+        raise ValueError("Profile frame dimensions must be positive")
+    frame["width"], frame["height"] = width, height
+    frame["index"] = int(frame.get("index", 0))
+    if frame["index"] < 0:
+        raise ValueError("Frame index cannot be negative")
+    source = result.setdefault("source_video", {})
+    source["path"] = str(source.get("path", DEFAULT_VIDEO)).replace("\\", "/")
+    source.setdefault("name", Path(source["path"]).name)
+    source.setdefault("fps", 30.0)
+    source.setdefault("frame_count", 0)
+    geometry = result.setdefault("geometry", {})
+    geometry["interest_zone"] = _polygon(geometry.get("interest_zone", []), "Interest Zone", width, height, require_complete)
+    geometry["analysis_roi"] = _polygon(geometry.get("analysis_roi", []), "Analysis ROI", width, height, require_complete)
+    geometry["calibration_roi"] = _polygon(geometry.get("calibration_roi", []), "Calibration ROI", width, height, require_complete)
+    clean_bubbles = []
+    seen: set[str] = set()
+    for index, item in enumerate(geometry.get("bubbles", []), start=1):
+        item_id = str(item.get("id") or f"BUBBLE-{index:03d}")
+        if item_id in seen:
+            raise ValueError(f"Duplicate bubble id: {item_id}")
+        seen.add(item_id)
+        clean_bubbles.append({"id": item_id, "points": _polygon(item.get("points", []), item_id, width, height)})
+    geometry["bubbles"] = clean_bubbles
+    cad = result.setdefault("cad", {})
+    cad["enabled"] = bool(cad.get("enabled", False))
+    if cad["enabled"] and cad.get("legacy_channel") not in LEGACY_CHANNELS:
+        raise ValueError("CAD profiles require a valid migrated legacy_channel")
+    settings = result.setdefault("settings", {})
+    settings.setdefault("bubble_smooth_radius", 3)
+    settings.setdefault("flip_horizontal", False)
+    return result
+
+
+def load_profile(name: str, require_complete: bool = False) -> dict[str, Any]:
+    path = profile_path(name)
+    if path.exists():
+        payload = _raw_profile(path)
+        if int(payload.get("schema_version", -1)) == 1:
+            raise ValueError(f"Select one of the profiles derived from {name}")
+        return validate_profile(payload, require_complete)
+    legacy = _find_legacy_virtual(name)
+    if legacy is None:
+        raise FileNotFoundError(f"Profile not found: {name}")
+    legacy_path, channel = legacy
+    return validate_profile(_migrate_legacy(_raw_profile(legacy_path), channel), require_complete)
 
 
 def resolve_profile_video(name: str, payload: dict[str, Any] | None = None) -> Path:
@@ -60,13 +187,10 @@ def copy_video_into_profile(name: str, source: Path) -> tuple[Path, str]:
             digest.update(chunk)
     safe_stem = re.sub(r"[^A-Za-z0-9_-]+", "_", source.stem).strip("_") or "video"
     suffix = source.suffix.lower() or ".mp4"
-    filename = f"{safe_stem}_{digest.hexdigest()[:12]}{suffix}"
     destination_dir = profile_path(name).parent / "source"
     destination_dir.mkdir(parents=True, exist_ok=True)
-    if source.parent.resolve() == destination_dir.resolve():
-        return source, Path("source", source.name).as_posix()
-    destination = destination_dir / filename
-    if not destination.exists():
+    destination = destination_dir / f"{safe_stem}_{digest.hexdigest()[:12]}{suffix}"
+    if source != destination and not destination.exists():
         temporary = destination.with_suffix(destination.suffix + ".copying")
         try:
             shutil.copy2(source, temporary)
@@ -74,82 +198,7 @@ def copy_video_into_profile(name: str, source: Path) -> tuple[Path, str]:
         except Exception:
             temporary.unlink(missing_ok=True)
             raise
-    return destination, Path("source", filename).as_posix()
-
-
-def list_profiles() -> list[str]:
-    root = profiles_root()
-    if not root.exists():
-        return []
-    names = [path.parent.name for path in root.glob("*/profile.json")]
-    return sorted(names, key=str.casefold)
-
-
-def _point(value: Any, label: str) -> list[float]:
-    if not isinstance(value, (list, tuple)) or len(value) != 2:
-        raise ValueError(f"Invalid point in {label}")
-    x, y = float(value[0]), float(value[1])
-    if not (0 <= x < 1090 and 0 <= y < 340):
-        raise ValueError(f"Point outside the 1090x340 frame in {label}: ({x}, {y})")
-    return [round(x, 6), round(y, 6)]
-
-
-def _polygon(value: Any, label: str, required: bool = True) -> list[list[float]]:
-    points = [_point(point, label) for point in (value or [])]
-    if required and len(points) < 3:
-        raise ValueError(f"{label} needs at least 3 points")
-    if points and len(points) < 3:
-        raise ValueError(f"{label} has fewer than 3 points")
-    return points
-
-
-def validate_profile(payload: dict[str, Any], require_complete: bool = True) -> dict[str, Any]:
-    if int(payload.get("schema_version", -1)) != PROFILE_SCHEMA:
-        raise ValueError(f"Unsupported profile schema: {payload.get('schema_version')}")
-    result = copy.deepcopy(payload)
-    result["name"] = slugify(str(result.get("name", "")))
-    result.setdefault("frame", {"index": 120, "width": 1090, "height": 340})
-    if (int(result["frame"].get("width", 0)), int(result["frame"].get("height", 0))) != (1090, 340):
-        raise ValueError("This baseline requires a 1090x340 source frame")
-    frame_index = int(result["frame"].get("index", 120))
-    if frame_index < 0:
-        raise ValueError("Frame index cannot be negative")
-    result["frame"]["index"] = frame_index
-    source_video = result.setdefault("source_video", {})
-    source_video["path"] = str(source_video.get("path", DEFAULT_VIDEO)).replace("\\", "/")
-    source_video.setdefault("name", Path(source_video["path"]).name)
-    source_video.setdefault("fps", 30.0)
-    source_video.setdefault("frame_count", 0)
-    zones = result.setdefault("interest_zones", {})
-    rois = result.setdefault("rois", {})
-    bubbles = result.setdefault("bubbles", {})
-    for name in ZONES:
-        zones[name] = _polygon(zones.get(name, []), name, require_complete)
-    for name in CHANNELS:
-        rois[name] = _polygon(rois.get(name, []), f"ROI {name}", require_complete)
-        clean_items = []
-        seen = set()
-        for index, item in enumerate(bubbles.get(name, []), start=1):
-            item_id = str(item.get("id") or f"{name}-BUBBLE-{index:03d}")
-            if item_id in seen:
-                raise ValueError(f"Duplicate bubble id: {item_id}")
-            seen.add(item_id)
-            clean_items.append({"id": item_id, "points": _polygon(item.get("points", []), item_id)})
-        bubbles[name] = clean_items
-    calibrations = result.setdefault("calibration_rois", {})
-    for name in ("CAL-CH1", "CAL-CH2"):
-        calibrations[name] = _polygon(calibrations.get(name, []), name)
-    result.setdefault("settings", {})
-    result["settings"].setdefault("bubble_smooth_radius", 3)
-    result["settings"].setdefault("equalize_cad_lengths", True)
-    return result
-
-
-def load_profile(name: str, require_complete: bool = False) -> dict[str, Any]:
-    path = profile_path(name)
-    if not path.exists():
-        raise FileNotFoundError(f"Profile not found: {name}")
-    return validate_profile(json.loads(path.read_text(encoding="utf-8")), require_complete)
+    return destination, Path("source", destination.name).as_posix()
 
 
 def save_profile(payload: dict[str, Any], require_complete: bool = False) -> Path:
@@ -173,27 +222,19 @@ def save_profile(payload: dict[str, Any], require_complete: bool = False) -> Pat
 
 def duplicate_profile(source_name: str, new_name: str) -> Path:
     payload = load_profile(source_name, require_complete=False)
-    destination_name = slugify(new_name)
     source_video = resolve_profile_video(source_name, payload)
-    source_dir = (profile_path(source_name).parent / "source").resolve()
-    payload["name"] = destination_name
+    payload["name"] = slugify(new_name)
     payload.pop("updated_at_utc", None)
-    if source_video.is_file() and source_video.is_relative_to(source_dir):
-        destination_dir = profile_path(destination_name).parent / "source"
-        destination_dir.mkdir(parents=True, exist_ok=True)
-        destination = destination_dir / source_video.name
-        if not destination.exists():
-            shutil.copy2(source_video, destination)
-        payload["source_video"]["path"] = Path("source", destination.name).as_posix()
-    return save_profile(payload, require_complete=False)
+    path = save_profile(payload, require_complete=False)
+    if source_video.is_file() and source_video.parent.name == "source":
+        destination, relative = copy_video_into_profile(path.parent.name, source_video)
+        payload["source_video"]["path"] = relative
+        payload["source_video"]["stored_name"] = destination.name
+        path = save_profile(payload, require_complete=False)
+    return path
 
 
 def profile_completeness(payload: dict[str, Any]) -> tuple[bool, list[str]]:
-    missing = []
-    for name in ZONES:
-        if len(payload.get("interest_zones", {}).get(name, [])) < 3:
-            missing.append(name)
-    for name in CHANNELS:
-        if len(payload.get("rois", {}).get(name, [])) < 3:
-            missing.append(f"ROI {name}")
+    geometry = payload.get("geometry", {})
+    missing = [label for key, label in (("interest_zone", "Interest Zone"), ("analysis_roi", "Analysis ROI"), ("calibration_roi", "Calibration ROI")) if len(geometry.get(key, [])) < 3]
     return not missing, missing

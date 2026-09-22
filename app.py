@@ -15,8 +15,6 @@ import cv2
 from PIL import Image, ImageTk
 
 from profile_store import (
-    CHANNELS,
-    ZONES,
     copy_video_into_profile,
     duplicate_profile,
     list_profiles,
@@ -31,13 +29,15 @@ from profile_store import (
 
 ACTIONS = (
     ("Interest Zone", "zone"),
-    ("Channel ROI", "roi"),
+    ("Analysis ROI", "roi"),
+    ("Calibration ROI", "calibration"),
     ("Bubble", "bubble"),
 )
 
 COLORS = {
     "zone": "#44df7b",
     "roi": "#2ed5ff",
+    "calibration": "#b06cff",
     "bubble": "#ff4f6d",
     "draft": "#ffd166",
     "cad": "#101010",
@@ -71,8 +71,9 @@ class FluidSpaceApp:
         self.profile_var = tk.StringVar()
         self.video_var = tk.StringVar(value="Video: loading…")
         self.frame_index_var = tk.StringVar(value="120")
-        self.active_channel = tk.StringVar(value=CHANNELS[0])
         self.cad_visible = tk.BooleanVar(value=True)
+        self.use_cad = tk.BooleanVar(value=False)
+        self.flip_horizontal = tk.BooleanVar(value=False)
         self.status_var = tk.StringVar(value="Ready")
         self.geometry_status_var = tk.StringVar()
         self._build_ui()
@@ -117,17 +118,10 @@ class FluidSpaceApp:
         ttk.Button(frame_row, text="Load", command=self.load_selected_frame).pack(side="left", expand=True, fill="x")
 
         ttk.Separator(sidebar).pack(fill="x", pady=12)
-        ttk.Label(sidebar, text="2  Select channel", style="Step.TLabel").pack(anchor="w", pady=(2, 6))
-        channel_frame = ttk.Frame(sidebar)
-        channel_frame.pack(fill="x")
-        for index, channel in enumerate(CHANNELS):
-            ttk.Radiobutton(
-                channel_frame,
-                text=channel,
-                value=channel,
-                variable=self.active_channel,
-                command=self.change_channel,
-            ).grid(row=index // 2, column=index % 2, sticky="w", padx=(0, 18), pady=2)
+        ttk.Label(sidebar, text="2  Profile setup", style="Step.TLabel").pack(anchor="w", pady=(2, 6))
+        self.cad_checkbox = ttk.Checkbutton(sidebar, text="Use legacy CAD boundary", variable=self.use_cad, command=self.change_settings)
+        self.cad_checkbox.pack(anchor="w")
+        ttk.Checkbutton(sidebar, text="Reverse result direction", variable=self.flip_horizontal, command=self.change_settings).pack(anchor="w")
 
         ttk.Separator(sidebar).pack(fill="x", pady=12)
         ttk.Label(sidebar, text="3  Select drawing", style="Step.TLabel").pack(anchor="w", pady=(0, 6))
@@ -160,7 +154,7 @@ class FluidSpaceApp:
         ttk.Label(sidebar, textvariable=self.geometry_status_var, justify="left", wraplength=250).pack(anchor="w", pady=(5, 0))
         ttk.Label(
             sidebar,
-            text="CAD and calibration are locked assets.\nAll internal islands come from CAD only.",
+            text="Each profile contains one complete setup.\nCAD is optional for non-channel videos.",
             foreground="#4a6670",
             justify="left",
         ).pack(anchor="w", pady=(10, 0))
@@ -201,6 +195,9 @@ class FluidSpaceApp:
         self.profile_var.set(name)
         self.draft = []
         self.dirty = False
+        self.use_cad.set(bool(self.profile.get("cad", {}).get("enabled", False)))
+        self.flip_horizontal.set(bool(self.profile.get("settings", {}).get("flip_horizontal", False)))
+        self.cad_checkbox.configure(state="normal" if self.profile.get("cad", {}).get("legacy_channel") else "disabled")
         self._load_bound_video(show_error=True)
         self.status_var.set(f"Loaded profile: {name}")
         self.update_completeness()
@@ -272,12 +269,6 @@ class FluidSpaceApp:
         if not ok or frame is None:
             raise RuntimeError(f"Cannot read frame {frame_index} from {path.name}")
         height, width = frame.shape[:2]
-        expected = (int(self.profile["frame"]["width"]), int(self.profile["frame"]["height"]))
-        if (width, height) != expected:
-            raise ValueError(
-                f"Video resolution is {width}x{height}; this CAD profile requires "
-                f"{expected[0]}x{expected[1]}."
-            )
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         metadata = {
             "frame_index": frame_index,
@@ -295,6 +286,13 @@ class FluidSpaceApp:
                 video_path,
                 int(self.profile["frame"]["index"]),
             )
+            expected = (int(self.profile["frame"]["width"]), int(self.profile["frame"]["height"]))
+            actual = (metadata["width"], metadata["height"])
+            if actual != expected:
+                raise ValueError(
+                    f"Video resolution is {actual[0]}×{actual[1]}, but this profile stores "
+                    f"{expected[0]}×{expected[1]}. Select the video again to reset incompatible geometry."
+                )
         except Exception as exc:
             self.video_var.set(f"Video unavailable: {exc}")
             self.frame_image = Image.open(project_root() / "assets" / "frame_0120.png").convert("RGB")
@@ -344,6 +342,21 @@ class FluidSpaceApp:
                 int(self.profile["frame"]["index"]),
                 clamp_index=True,
             )
+            old_size = (int(self.profile["frame"]["width"]), int(self.profile["frame"]["height"]))
+            new_size = (metadata["width"], metadata["height"])
+            if old_size != new_size:
+                if not messagebox.askyesno(
+                    "Different video size",
+                    f"The video is {new_size[0]}×{new_size[1]}. Clear the old geometry and use this size?",
+                ):
+                    return
+                self.profile["geometry"] = {
+                    "interest_zone": [], "analysis_roi": [], "calibration_roi": [], "bubbles": []
+                }
+                self.profile["cad"] = {"enabled": False}
+                self.use_cad.set(False)
+                self.cad_checkbox.configure(state="disabled")
+                self.profile["frame"]["width"], self.profile["frame"]["height"] = new_size
             destination, relative = copy_video_into_profile(self.profile_name, source_path)
             self.profile["source_video"] = {
                 "path": relative,
@@ -391,15 +404,13 @@ class FluidSpaceApp:
         selection = self.target_list.curselection()
         index = selection[0] if selection else 0
         _, kind = ACTIONS[index]
-        channel = self.active_channel.get()
-        name = f"ZONE-{channel.split('-', 1)[0]}" if kind == "zone" else channel
-        return kind, name
+        names = {"zone": "interest_zone", "roi": "analysis_roi", "calibration": "calibration_roi", "bubble": "bubbles"}
+        return kind, names[kind]
 
-    def change_channel(self) -> None:
-        if self.draft:
-            self.draft = []
-            self.status_var.set("Draft cancelled because the active channel changed")
-        self.update_completeness()
+    def change_settings(self) -> None:
+        self.profile.setdefault("cad", {})["enabled"] = self.use_cad.get()
+        self.profile.setdefault("settings", {})["flip_horizontal"] = self.flip_horizontal.get()
+        self.dirty = True
         self.redraw()
 
     def change_target(self) -> None:
@@ -434,17 +445,16 @@ class FluidSpaceApp:
             messagebox.showwarning("Polygon incomplete", "A polygon needs at least 3 points")
             return False
         kind, name = self.current_target()
-        if kind == "zone":
-            self.profile["interest_zones"][name] = copy.deepcopy(self.draft)
-        elif kind == "roi":
-            self.profile["rois"][name] = copy.deepcopy(self.draft)
+        geometry = self.profile["geometry"]
+        if kind != "bubble":
+            geometry[name] = copy.deepcopy(self.draft)
         else:
-            items = self.profile["bubbles"][name]
+            items = geometry["bubbles"]
             next_id = 1
             existing = {item["id"] for item in items}
-            while f"{name}-BUBBLE-{next_id:03d}" in existing:
+            while f"BUBBLE-{next_id:03d}" in existing:
                 next_id += 1
-            items.append({"id": f"{name}-BUBBLE-{next_id:03d}", "points": copy.deepcopy(self.draft)})
+            items.append({"id": f"BUBBLE-{next_id:03d}", "points": copy.deepcopy(self.draft)})
         self.draft = []
         self.dirty = True
         self.status_var.set(f"Updated {name} — press Save when ready")
@@ -454,16 +464,16 @@ class FluidSpaceApp:
 
     def clear_current(self) -> None:
         kind, name = self.current_target()
+        geometry = self.profile["geometry"]
         if kind == "bubble":
-            items = self.profile["bubbles"][name]
+            items = geometry["bubbles"]
             if not items:
                 return
             if messagebox.askyesno("Clear bubble", f"Remove the latest bubble from {name}?"):
                 items.pop()
         else:
             if messagebox.askyesno("Clear geometry", f"Clear {name} from this profile?"):
-                key = "interest_zones" if kind == "zone" else "rois"
-                self.profile[key][name] = []
+                geometry[name] = []
         self.draft = []
         self.dirty = True
         self.update_completeness()
@@ -471,29 +481,18 @@ class FluidSpaceApp:
 
     def update_completeness(self) -> None:
         complete, missing = profile_completeness(self.profile)
-        bubble_count = sum(len(self.profile.get("bubbles", {}).get(channel, [])) for channel in CHANNELS)
-        active = self.active_channel.get()
-        active_zone = f"ZONE-{active.split('-', 1)[0]}"
-        active_ready = (
-            len(self.profile.get("interest_zones", {}).get(active_zone, [])) >= 3
-            and len(self.profile.get("rois", {}).get(active, [])) >= 3
-        )
-        active_bubbles = len(self.profile.get("bubbles", {}).get(active, []))
+        bubble_count = len(self.profile.get("geometry", {}).get("bubbles", []))
         if complete:
             text = (
-                f"Active: {active}\n"
-                f"{'✓' if active_ready else '○'} Zone + ROI ready\n"
-                f"Bubbles in channel: {active_bubbles}\n\n"
-                f"Overall: Zones 2/2 · ROIs 4/4\n"
-                f"Total bubbles: {bubble_count}"
+                "✓ Setup ready\n"
+                f"Mode: {'CAD' if self.use_cad.get() else 'ROI only'}\n"
+                f"Bubbles: {bubble_count}"
             )
         else:
             text = (
-                f"Active: {active}\n"
-                f"Bubbles in channel: {active_bubbles}\n\n"
                 "Missing:\n"
                 + "\n".join(f"• {item}" for item in missing)
-                + f"\nTotal bubbles: {bubble_count}"
+                + f"\nBubbles: {bubble_count}"
             )
         self.geometry_status_var.set(text)
 
@@ -561,23 +560,13 @@ class FluidSpaceApp:
             self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color, outline="")
 
     def _channel_rectangle(self, channel: str) -> tuple[float, float, float, float]:
-        group = channel.split("-", 1)[0]
-        channel_pair = (f"{group}-1", f"{group}-2")
-        zone = self.profile["interest_zones"].get(f"ZONE-{group}", [])
-        xs = [float(point[0]) for point in zone] or [0.0, float(self.frame_image.width - 1)]
-
-        def center_y(name: str, fallback: float) -> float:
-            points = self.profile["rois"].get(name, [])
-            return sum(float(point[1]) for point in points) / len(points) if points else fallback
-
-        first_center = center_y(channel_pair[0], self.frame_image.height * 0.25)
-        second_center = center_y(channel_pair[1], self.frame_image.height * 0.75)
-        separator = (first_center + second_center) / 2.0
-        xmin, xmax = min(xs), max(xs)
-        first_is_upper = first_center <= second_center
-        if (channel == channel_pair[0]) == first_is_upper:
-            return xmin, 0.0, xmax, separator
-        return xmin, separator, xmax, float(self.frame_image.height - 1)
+        geometry = self.profile.get("geometry", {})
+        points = geometry.get("interest_zone", []) + geometry.get("analysis_roi", [])
+        if not points:
+            return 0.0, 0.0, float(self.frame_image.width - 1), float(self.frame_image.height - 1)
+        xs = [float(point[0]) for point in points]
+        ys = [float(point[1]) for point in points]
+        return min(xs), min(ys), max(xs), max(ys)
 
     @staticmethod
     def _clip_segment(
@@ -655,23 +644,28 @@ class FluidSpaceApp:
         self._photo = ImageTk.PhotoImage(resized)
         self.canvas.create_image(left, top, image=self._photo, anchor="nw")
 
-        active_channel = self.active_channel.get()
         kind, active_name = self.current_target()
-        active_zone = f"ZONE-{active_channel.split('-', 1)[0]}"
-        if self.cad_visible.get():
-            self._draw_active_cad(active_channel, scale)
+        geometry = self.profile.get("geometry", {})
+        active_channel = self.profile.get("cad", {}).get("legacy_channel")
+        if self.cad_visible.get() and self.use_cad.get() and active_channel:
+            self._draw_active_cad(str(active_channel), scale)
         self._draw_polygon(
-            self.profile["interest_zones"].get(active_zone, []),
+            geometry.get("interest_zone", []),
             COLORS["zone"],
             3 if kind == "zone" else 1,
             (8, 4),
         )
         self._draw_polygon(
-            self.profile["rois"].get(active_channel, []),
+            geometry.get("analysis_roi", []),
             COLORS["roi"],
             3 if kind == "roi" else 1,
         )
-        for item in self.profile["bubbles"].get(active_channel, []):
+        self._draw_polygon(
+            geometry.get("calibration_roi", []),
+            COLORS["calibration"],
+            3 if kind == "calibration" else 1,
+        )
+        for item in geometry.get("bubbles", []):
             self._draw_polygon(item["points"], COLORS["bubble"], 3 if kind == "bubble" else 1)
         self._draw_polygon(self.draft, COLORS["draft"], 3)
 
@@ -709,7 +703,7 @@ class FluidSpaceApp:
         self.run_button.configure(state="normal")
         if success:
             runs = sorted((profile_path(self.profile_name).parent / "runs").glob("run_*"))
-            result = runs[-1] / "graphs" / "phase_publication_aligned_left.png" if runs else None
+            result = runs[-1] / "graphs" / "phase_result.png" if runs else None
             self.status_var.set(f"Completed: {result or detail}")
             messagebox.showinfo("Result completed", f"Saved to:\n{result or detail}")
         else:
@@ -724,7 +718,7 @@ class FluidSpaceApp:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FLUID-Space profile editor")
-    parser.add_argument("--profile", default="current_baseline")
+    parser.add_argument("--profile", default="current_baseline_CH1-1")
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -734,7 +728,7 @@ def main() -> None:
     profile = load_profile(args.profile, require_complete=args.check)
     if args.check:
         complete, missing = profile_completeness(profile)
-        bubble_count = sum(len(profile["bubbles"][channel]) for channel in CHANNELS)
+        bubble_count = len(profile["geometry"]["bubbles"])
         video_path = resolve_profile_video(args.profile, profile)
         if not video_path.is_file():
             raise FileNotFoundError(f"Profile video not found: {video_path}")

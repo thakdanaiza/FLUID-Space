@@ -8,4 +8,4 @@ if [[ ! -x ".venv/bin/python" ]]; then
   bash setup_env.sh
 fi
 
-exec ".venv/bin/python" app.py --profile current_baseline
+exec ".venv/bin/python" app.py --profile current_baseline_CH1-1

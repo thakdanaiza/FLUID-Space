@@ -9,5 +9,5 @@ if not exist ".venv\Scripts\pythonw.exe" (
   if errorlevel 1 exit /b 1
 )
 
-start "FLUID-Space" ".venv\Scripts\pythonw.exe" app.py --profile current_baseline
+start "FLUID-Space" ".venv\Scripts\pythonw.exe" app.py --profile current_baseline_CH1-1
 exit /b 0

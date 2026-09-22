@@ -9,7 +9,7 @@ if not exist ".venv\Scripts\python.exe" (
   if errorlevel 1 exit /b 1
 )
 
-".venv\Scripts\python.exe" run_profile.py --profile current_baseline
+".venv\Scripts\python.exe" run_profile.py --profile current_baseline_CH1-1
 if errorlevel 1 (
   echo.
   echo Pipeline stopped. Review the error above.
@@ -18,5 +18,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo Result completed under profiles\current_baseline\runs
+echo Result completed under profiles\current_baseline_CH1-1\runs
 pause

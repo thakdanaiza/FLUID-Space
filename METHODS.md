@@ -1,5 +1,7 @@
 # FLUID-Space Research Methods Reference
 
+> Version note (v2.0.0): each profile now represents one analysis setup. “Channel” below describes the legacy CAD experiment, not a required software structure. For other videos, use ROI-only mode and report the profile's Interest Zone, Analysis ROI, Calibration ROI, flow direction, and bubble exclusions.
+
 This file describes the analysis implemented in FLUID-Space v1.0.0 and provides manuscript-ready language for laboratory studies. Confirm the software version, selected frame, profile, and study-specific acquisition details before reusing the text.
 
 ## Method summary
@@ -72,7 +74,7 @@ Each run is stored in `profiles/<profile-name>/runs/run_xxx/`. Retain the follow
 - The selected source video or its archived copy
 - `arrays/valid_mask_*.npy` and `arrays/phase_raw_*.npy`
 - `qc/mask_final_*.png` and `qc/phase_*.png`
-- `graphs/phase_publication_aligned_left.png`
+- `graphs/phase_result.png`
 
 `summary.json` records the selected frame, input paths and SHA-256 hashes, mask statistics, calibration values, phase summaries, low-saturation sensitivity results, and bubble-refinement acceptance or fallback information.
 
