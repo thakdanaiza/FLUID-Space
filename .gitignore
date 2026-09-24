@@ -8,3 +8,5 @@ profiles/*/runs/
 profiles/*/profile.json
 profiles/*/source/
 !profiles/current_baseline/profile.json
+/Supplementary-*.zip
+/Supplementary-*/
