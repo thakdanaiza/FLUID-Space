@@ -2,7 +2,8 @@
 
 ## A Profile-Based Tool for Calibrated Phase-Index Mapping from Experimental Videos
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22888466.svg)](https://doi.org/10.5281/zenodo.22888466)
+[![Software DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22888466.svg)](https://doi.org/10.5281/zenodo.22888466)
+[![Dataset DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22934189.svg)](https://doi.org/10.5281/zenodo.22934189)
 
 FLUID-Space is a profile-based application for generating calibrated phase-index maps from experiment videos. One profile contains one complete analysis setup; the UI has no separate channel selector. Profiles may use the supplied legacy CAD boundary or an ROI-only workflow for videos outside the original CH1/CH2 layout.
 
@@ -16,6 +17,10 @@ Use GitHub's **Cite this repository** function, which reads [`CITATION.cff`](CIT
 Suggested citation:
 
 > Sirisombat, T., & Seehanam, S. (2026). *FLUID-Space: A Profile-Based Tool for Calibrated Phase-Index Mapping from Experimental Videos* (Version 2.0.1) [Computer software]. Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy. https://doi.org/10.5281/zenodo.22888466
+
+## TIGERS-X research dataset
+
+The processed TIGERS-X experiment videos and flight-model CAD assembly are archived as a separate CC BY 4.0 dataset: [10.5281/zenodo.22934189](https://doi.org/10.5281/zenodo.22934189). The videos were prepared with [FLIP Video Preprocessor v1.0.1](https://doi.org/10.5281/zenodo.22939929) and can be analysed with FLUID-Space v2.0.1.
 
 ## License
 

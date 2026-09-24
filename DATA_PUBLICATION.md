@@ -7,6 +7,18 @@ FLUID-Space software and experiment data should be published as separate archiva
 
 Keeping these records separate avoids placing large or study-specific videos in Git, permits an appropriate data license, and gives both the software and dataset independent DOIs.
 
+## Published TIGERS-X dataset
+
+- Dataset: [TIGERS-X On-Orbit Emulsification Experiment: Processed Videos and Payload CAD](https://doi.org/10.5281/zenodo.22934189)
+- Version: 1.0.0
+- License: CC BY 4.0
+- Preprocessing software: [FLIP Video Preprocessor v1.0.1](https://doi.org/10.5281/zenodo.22939929)
+- Analysis software: [FLUID-Space v2.0.1](https://doi.org/10.5281/zenodo.22888466)
+
+Manuscript-ready data availability statement:
+
+> The processed experimental videos and flight-model CAD assembly from the TIGERS-X experiment are available on Zenodo at https://doi.org/10.5281/zenodo.22934189 under the Creative Commons Attribution 4.0 International license. Video preprocessing was performed with FLIP Video Preprocessor v1.0.1 (https://doi.org/10.5281/zenodo.22939929), and the processed videos can be analysed with FLUID-Space v2.0.1 (https://doi.org/10.5281/zenodo.22888466).
+
 ## Prepare profiles locally
 
 The recommended workflow is:
@@ -43,7 +55,7 @@ The command validates each profile and video, creates a portable profile/video l
 
 ## Upload to Zenodo
 
-Create a new upload manually and select resource type **Dataset**. Upload the generated dataset ZIP and its checksum file. Use the study's actual creators, title, description, keywords, access conditions, and data license. Add the FLUID-Space software DOI, `10.5281/zenodo.22888466`, as a related identifier. Then add the dataset DOI back to the paper and, if desired, to the repository documentation.
+Create a new upload manually and select resource type **Dataset**. Upload the generated dataset ZIP and its checksum file. Use the study's actual creators, title, description, keywords, access conditions, and data license. Add the FLUID-Space software DOI, `10.5281/zenodo.22888466`, as a related identifier. Then add the dataset DOI back to the paper and repository documentation. The published TIGERS-X dataset above is an example of this separation.
 
 Before publishing, verify:
 
