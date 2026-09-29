@@ -7,6 +7,8 @@
 
 FLUID-Space is a profile-based application for generating calibrated phase-index maps from experiment videos. One profile contains one complete analysis setup; the UI has no separate channel selector. Profiles may use the supplied legacy CAD boundary or an ROI-only workflow for videos outside the original CH1/CH2 layout.
 
+![FLUID-Space analysis-ready profile](docs/images/fluid-space-analysis-ready.png)
+
 ## Authors and citation
 
 - Thakdanai Sirisombat — Integration of Space and Human Advancement (ISHA), Chulabhorn Royal Academy; [ORCID 0000-0003-4360-3525](https://orcid.org/0000-0003-4360-3525); contact: <fifatein@gmail.com>
